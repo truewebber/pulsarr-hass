@@ -30,15 +30,24 @@ RUN ln -sf /usr/lib/bashio/bashio /usr/bin/bashio
 COPY rootfs/run.sh /run.sh
 RUN chmod a+x /run.sh
 
-# Disable the upstream Docker HEALTHCHECK. The upstream check probes
-# `${basePath}/health` using `${basePath}` from environment, but env vars set
-# by /run.sh (where we compute the dynamic Ingress path) are not visible to
-# the HEALTHCHECK CMD process. With basePath empty inside HEALTHCHECK, every
-# probe hits bare `/health`, which Pulsarr serves only under basePath when
-# running behind HA Ingress, producing 404 spam in logs. HA Supervisor has
-# its own watchdog mechanism for add-ons, so the Docker-level check is
-# redundant here.
-HEALTHCHECK NONE
+# Replace the upstream HEALTHCHECK with a TCP-only probe.
+#
+# The upstream check shells out to `${basePath}/health`, but environment
+# variables exported by /run.sh are not visible to Docker's HEALTHCHECK CMD,
+# so the probe hit bare `/health`, which Pulsarr serves only under the
+# Ingress basePath. That generated 404 spam in the add-on log.
+#
+# Disabling HEALTHCHECK entirely (HEALTHCHECK NONE) silenced the spam but
+# made HA Supervisor sit in "starting" forever — without a healthcheck the
+# Supervisor cannot mark the add-on as started, and the HA frontend shows
+# a perpetual loading spinner when opening the Web UI.
+#
+# A TCP-level probe satisfies the Supervisor (the port is open once Pulsarr
+# is listening) without issuing HTTP requests against routes that depend on
+# basePath. bash ships in this image, and /dev/tcp/<host>/<port> is bash's
+# built-in TCP redirector, so no extra dependencies are required.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --start-interval=10s --retries=3 \
+    CMD bash -c '> /dev/tcp/127.0.0.1/3003' || exit 1
 
 # ENTRYPOINT ["/sbin/tini", "--"] is inherited from lakker/pulsarr and
 # handles signals + zombie reaping. We only override CMD to bootstrap

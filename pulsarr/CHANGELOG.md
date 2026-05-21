@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.15.5-4
+
+- Fix: replace `HEALTHCHECK NONE` with a TCP-only probe via bash's built-in
+  `/dev/tcp` redirector. Without a healthcheck, HA Supervisor cannot mark the
+  add-on as `started`, leaving the HA frontend in a perpetual loading spinner
+  when opening the Web UI. The TCP probe verifies that Pulsarr is listening
+  on port 3003 without issuing HTTP requests that depend on the Ingress
+  basePath, avoiding the 404 log spam that broke 0.15.5-3 and earlier.
+
 ## 0.15.5-3
 
 - Fix: disable the inherited Docker `HEALTHCHECK` (`HEALTHCHECK NONE`). The
