@@ -88,10 +88,17 @@ export cookieSecured="false"
 # ------------------------------------------------------------------------------
 # Persistent storage
 # ------------------------------------------------------------------------------
-# /data is the per-add-on persistent volume managed by Supervisor. We use it
-# for SQLite even when /app/data (declared as VOLUME by upstream) becomes an
-# anonymous volume — application data we care about lives in /data.
+# /data is the per-add-on persistent volume managed by Supervisor. Supervisor
+# mounts the path as root:root, but the upstream docker-entrypoint will
+# su-exec into PUID/PGID (defaulting to 1000:1000) before launching Pulsarr.
+# We have to align ownership of /data with that uid/gid here, otherwise the
+# Bun process cannot create /data/db/pulsarr.db (SQLITE_CANTOPEN, errno 14).
+PUID="${PUID:-1000}"
+PGID="${PGID:-1000}"
+export PUID PGID
+
 mkdir -p /data/db /data/logs
+chown -R "${PUID}:${PGID}" /data
 
 # ------------------------------------------------------------------------------
 # Hand off to upstream entrypoint

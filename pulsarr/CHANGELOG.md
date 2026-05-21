@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.15.5-2
+
+- Fix: chown `/data` to PUID/PGID (defaults 1000:1000) before handing off to
+  the upstream entrypoint. Without this, Bun running under su-exec could not
+  create `/data/db/pulsarr.db` and migrations failed with `SQLITE_CANTOPEN`
+  (errno 14). The upstream entrypoint only chowns `/app/data`, but we relocate
+  the DB to `/data` (the HA-managed persistent volume), so the wrapper has to
+  align the ownership itself.
+
 ## 0.15.5-1
 
 - Fix: re-create `/usr/bin/bashio` as a symlink to `/usr/lib/bashio/bashio`
