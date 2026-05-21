@@ -107,18 +107,35 @@ mkdir -p /data/db /data/logs
 chown -R "${PUID}:${PGID}" /data
 
 # ------------------------------------------------------------------------------
-# Start nginx (reverse proxy) in the background
+# Start nginx (reverse proxy) before Pulsarr
 # ------------------------------------------------------------------------------
-# nginx must be listening on :3003 before Pulsarr binds to :8989 so that HA's
-# Supervisor sees the ingress port come up. If nginx exits, we tear the whole
-# container down so Supervisor can restart us cleanly.
+# nginx must be listening on :3003 before HA Supervisor's first health probe.
+# We let nginx fork into classic daemon mode (master + worker), then verify
+# that the master process is alive. If nginx fails to start, abort early --
+# otherwise Supervisor would proxy directly into Pulsarr's loopback port and
+# see only connection refused / unrelated 404s.
 bashio::log.info "Starting nginx reverse proxy on :3003 -> 127.0.0.1:8989"
 nginx -t -c /etc/nginx/nginx.conf
-nginx -c /etc/nginx/nginx.conf &
-NGINX_PID=$!
+nginx -c /etc/nginx/nginx.conf
+
+# Give nginx ~1s to bind sockets, then sanity-check.
+# `pgrep -x` is not reliable here: busybox pgrep matches against argv, and
+# nginx rewrites its argv to `nginx: master process ...`, so `-x nginx` never
+# matches. Plain `pgrep nginx` (substring) and `pidof nginx` both work, but
+# `pidof` is a single binary call and is also available on alpine via busybox.
+sleep 1
+if ! pidof nginx > /dev/null 2>&1; then
+    bashio::exit.nok "nginx is not running after startup"
+fi
+
+# Dump listening sockets so the add-on log shows who owns :3003 and :8989.
+# Useful when diagnosing future regressions ("did Pulsarr eat the ingress
+# port?", "did nginx silently exit?", etc.).
+bashio::log.info "Listening sockets after nginx start:"
+ss -tlnp 2>&1 | grep -E ':(3003|8989)\b' || bashio::log.warning "no socket on :3003 / :8989 yet"
 
 # Propagate SIGTERM/SIGINT to nginx so the container shuts down cleanly.
-trap 'kill -TERM "${NGINX_PID}" 2>/dev/null || true' TERM INT
+trap 'pkill -TERM nginx 2>/dev/null || true' TERM INT
 
 # ------------------------------------------------------------------------------
 # Hand off to upstream entrypoint

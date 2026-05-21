@@ -14,8 +14,9 @@ USER root
 # - nginx: in-container reverse proxy that strips the rotating
 #   `/api/hassio_ingress/<TOKEN>` prefix Home Assistant prepends before each
 #   request. See rootfs/etc/nginx/nginx.conf for the full rationale.
+# - iproute2: provides `ss`, used by run.sh to log who owns :3003 / :8989.
 # hadolint ignore=DL3018
-RUN apk add --no-cache bash jq curl nginx
+RUN apk add --no-cache bash jq curl nginx iproute2
 
 # Pull bashio runtime from the canonical HA add-on base image. We do not
 # inherit FROM that image because lakker/pulsarr is our base; we only need

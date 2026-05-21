@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.15.5-6
+
+- Fix: launch nginx in classic daemon mode and verify the master process is
+  alive before handing off to Pulsarr. The previous `nginx ... &` + `daemon
+  off;` combination could let nginx exit silently while the wrapper still
+  `exec`'d into Pulsarr -- HA Supervisor would then see Pulsarr's loopback
+  port refused and surface unrelated 404s.
+- Diag: install `iproute2` and dump the listening sockets owned by `:3003`
+  and `:8989` to the add-on log right after nginx starts, so future deploy
+  regressions are diagnosable from the Log tab alone.
+
 ## 0.15.5-5
 
 - Fix: serve the UI through an in-container nginx reverse proxy. Home Assistant
