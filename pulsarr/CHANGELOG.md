@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.15.5-8
+
+- Fix: source the rotating Ingress prefix from the `X-Ingress-Path` request
+  header instead of trying to capture it from the request URI. Home Assistant
+  Supervisor strips its own `/api/hassio_ingress/<TOKEN>/` prefix before
+  forwarding to the add-on -- the URL reaching nginx is just `/...`. Our
+  previous regex never matched, `$ingress_prefix` stayed empty, and Pulsarr's
+  `Location: /create-user` redirect kept escaping the Ingress scope and
+  hitting the HA frontend's 404 page. Now nginx reads `X-Ingress-Path` (which
+  Supervisor sets verbatim per
+  https://developers.home-assistant.io/docs/add-ons/presentation#ingress) and
+  rewrites Location, Set-Cookie Path, and the SPA's `<base href>` accordingly.
+
 ## 0.15.5-7
 
 - Diag: stream every nginx-handled request to the add-on Log tab (`access_log
