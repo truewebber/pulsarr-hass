@@ -1,0 +1,22 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build artifacts
+*.log
+*.tmp
+*.bak
+node_modules/
+
+# Local secrets
+.env
+.env.local
+*.pem
+*.key
+
+# Pulsarr runtime data (this repo only ships add-on metadata, never DB or media)
+data/

@@ -1,0 +1,15 @@
+---
+build_from:
+  amd64: lakker/pulsarr:0.15.5
+  aarch64: lakker/pulsarr:0.15.5
+labels:
+  org.opencontainers.image.title: "Pulsarr Home Assistant Add-on"
+  org.opencontainers.image.description: "Pulsarr packaged as a Home Assistant OS / Supervised add-on"
+  org.opencontainers.image.source: "https://github.com/truewebber/pulsarr-hass"
+  org.opencontainers.image.licenses: "MIT"
+  org.opencontainers.image.url: "https://github.com/truewebber/pulsarr-hass"
+  org.opencontainers.image.documentation: "https://github.com/truewebber/pulsarr-hass/blob/master/pulsarr/DOCS.md"
+  org.opencontainers.image.vendor: "truewebber"
+  org.opencontainers.image.authors: "truewebber"
+args:
+  PULSARR_VERSION: "0.15.5"

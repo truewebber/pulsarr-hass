@@ -1,0 +1,45 @@
+---
+name: Pulsarr
+version: "0.15.5"
+slug: pulsarr
+description: >-
+  Real-time Plex watchlist monitoring and content acquisition. Bridges Plex
+  watchlists with Sonarr and Radarr, with smart routing, approval workflows,
+  quotas, Discord and Apprise notifications.
+url: "https://github.com/truewebber/pulsarr-hass/tree/master/pulsarr"
+arch:
+  - amd64
+  - aarch64
+init: false
+ingress: true
+ingress_port: 3003
+panel_icon: mdi:pulse
+panel_title: Pulsarr
+hassio_api: true
+hassio_role: default
+homeassistant_api: false
+host_network: false
+boot: auto
+startup: services
+image: ghcr.io/truewebber/{arch}-pulsarr-hass
+ports:
+  3003/tcp: null
+ports_description:
+  3003/tcp: Pulsarr web UI (leave unset to use HA Ingress only)
+options:
+  log_level: info
+  auth_method: requiredExceptLocal
+  database:
+    type: sqlite
+schema:
+  log_level: list(trace|debug|info|warn|error|fatal|silent)
+  auth_method: list(required|requiredExceptLocal|disabled)
+  tz: str?
+  database:
+    type: list(sqlite|postgres)
+    host: str?
+    port: port?
+    name: match(^[A-Za-z0-9_]+$)?
+    user: str?
+    password: password?
+  apprise_url: url?

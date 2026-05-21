@@ -1,0 +1,50 @@
+configuration:
+  log_level:
+    name: Log level
+    description: >-
+      Verbosity of Pulsarr's structured logs. `info` is recommended for normal
+      use; switch to `debug` or `trace` only while diagnosing a problem.
+  auth_method:
+    name: Authentication method
+    description: >-
+      How Pulsarr authenticates the UI. `requiredExceptLocal` (default) avoids a
+      double login when the UI is opened through Home Assistant Ingress. Use
+      `required` if you also publish port 3003 to your LAN. Use `disabled` only
+      when no port is published.
+  tz:
+    name: Timezone
+    description: >-
+      Optional IANA timezone name (e.g. `Europe/Berlin`). When empty, the host
+      timezone reported by Supervisor is used.
+  database:
+    name: Database
+    description: Storage backend for Pulsarr's persistent state.
+  database.type:
+    name: Database type
+    description: >-
+      `sqlite` stores data in `/data/db/pulsarr.db` and is included in HA
+      snapshots. `postgres` connects to an external PostgreSQL server.
+  database.host:
+    name: PostgreSQL host
+    description: Hostname or IP of the PostgreSQL server. Required for `postgres`.
+  database.port:
+    name: PostgreSQL port
+    description: TCP port of the PostgreSQL server. Defaults to 5432.
+  database.name:
+    name: PostgreSQL database name
+    description: Name of an existing PostgreSQL database. Required for `postgres`.
+  database.user:
+    name: PostgreSQL user
+    description: Username Pulsarr will use to connect. Required for `postgres`.
+  database.password:
+    name: PostgreSQL password
+    description: Password for the PostgreSQL user. Required for `postgres`.
+  apprise_url:
+    name: Apprise API URL
+    description: >-
+      Optional URL of an Apprise API server. When set, Pulsarr can route
+      notifications through any of Apprise's supported services.
+network:
+  3003/tcp: >-
+    Pulsarr web UI port. Leave unset to keep Pulsarr reachable only through HA
+    Ingress (recommended).
