@@ -18,9 +18,14 @@ RUN apk add --no-cache bash jq curl
 # Pull bashio runtime from the canonical HA add-on base image. We do not
 # inherit FROM that image because lakker/pulsarr is our base; we only need
 # the bashio helper scripts.
+#
+# Note: in the upstream image /usr/bin/bashio is a symlink to
+# /usr/lib/bashio/bashio. Copying the symlink target via COPY --from would
+# produce a regular file in /usr/bin and break bashio (it locates its modules
+# via `dirname "$BASH_SOURCE"`). We re-create the symlink instead.
 COPY --from=ghcr.io/hassio-addons/base:20.1.1 /usr/lib/bashio /usr/lib/bashio
-COPY --from=ghcr.io/hassio-addons/base:20.1.1 /usr/bin/bashio /usr/bin/bashio
 COPY --from=ghcr.io/hassio-addons/base:20.1.1 /usr/bin/tempio /usr/bin/tempio
+RUN ln -sf /usr/lib/bashio/bashio /usr/bin/bashio
 
 COPY rootfs/run.sh /run.sh
 RUN chmod a+x /run.sh

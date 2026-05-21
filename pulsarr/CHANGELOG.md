@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.15.5-1
+
+- Fix: re-create `/usr/bin/bashio` as a symlink to `/usr/lib/bashio/bashio`
+  instead of copying it as a regular file. Without the symlink, bashio's
+  module resolution (`dirname "$BASH_SOURCE"`) pointed at `/usr/bin/`, where
+  the helper scripts (`bashio.sh`, `config.sh`, ...) do not live, breaking
+  add-on startup with `/usr/bin/bashio.sh: No such file or directory`.
+
 ## 0.15.5
 
 Initial public release of the Home Assistant add-on packaging.
