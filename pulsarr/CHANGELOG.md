@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.15.5-3
+
+- Fix: disable the inherited Docker `HEALTHCHECK` (`HEALTHCHECK NONE`). The
+  upstream check shells out to `${basePath}/health`, but environment variables
+  exported by `/run.sh` are not visible to Docker's HEALTHCHECK process, so
+  `${basePath}` was always empty inside the probe. That caused the probe to
+  hit bare `/health`, which Pulsarr serves only under the Ingress basePath,
+  producing repeated 404 entries in the add-on log. HA Supervisor has its own
+  watchdog mechanism for add-ons, making the Docker-level check redundant
+  here.
+
 ## 0.15.5-2
 
 - Fix: chown `/data` to PUID/PGID (defaults 1000:1000) before handing off to

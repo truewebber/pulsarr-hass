@@ -30,6 +30,16 @@ RUN ln -sf /usr/lib/bashio/bashio /usr/bin/bashio
 COPY rootfs/run.sh /run.sh
 RUN chmod a+x /run.sh
 
+# Disable the upstream Docker HEALTHCHECK. The upstream check probes
+# `${basePath}/health` using `${basePath}` from environment, but env vars set
+# by /run.sh (where we compute the dynamic Ingress path) are not visible to
+# the HEALTHCHECK CMD process. With basePath empty inside HEALTHCHECK, every
+# probe hits bare `/health`, which Pulsarr serves only under basePath when
+# running behind HA Ingress, producing 404 spam in logs. HA Supervisor has
+# its own watchdog mechanism for add-ons, so the Docker-level check is
+# redundant here.
+HEALTHCHECK NONE
+
 # ENTRYPOINT ["/sbin/tini", "--"] is inherited from lakker/pulsarr and
 # handles signals + zombie reaping. We only override CMD to bootstrap
 # Home Assistant options before starting Pulsarr.
