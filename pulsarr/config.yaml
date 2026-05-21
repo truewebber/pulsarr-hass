@@ -1,6 +1,6 @@
 ---
 name: Pulsarr
-version: "0.15.5-8"
+version: "0.15.5-9"
 slug: pulsarr
 description: >-
   Real-time Plex watchlist monitoring and content acquisition. Bridges Plex

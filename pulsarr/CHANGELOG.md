@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.15.5-9
+
+- Fix: rewrite Pulsarr's redirects to absolute `https://` URLs so Safari and
+  Chromium do not block them as mixed content. HA Supervisor speaks plain
+  HTTP to the add-on on :3003, so `$scheme` was `http` and rewritten
+  Location headers came out as `http://hass.example.com:3003/...`. We now
+  force the scheme to `https` whenever the request arrives via Ingress
+  (detected by the presence of `X-Ingress-Path`) and disable nginx's own
+  port-injection (`port_in_redirect off;`).
+
 ## 0.15.5-8
 
 - Fix: source the rotating Ingress prefix from the `X-Ingress-Path` request
