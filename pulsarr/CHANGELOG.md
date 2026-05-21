@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.15.5-7
+
+- Diag: stream every nginx-handled request to the add-on Log tab (`access_log
+  /dev/stdout`). Each entry shows the full request line, status code and the
+  HA Ingress prefix nginx detected, making it obvious whether Supervisor is
+  actually reaching us or routing traffic somewhere else (e.g. when port
+  8989 is also taken by Sonarr on the host).
+
 ## 0.15.5-6
 
 - Fix: launch nginx in classic daemon mode and verify the master process is
