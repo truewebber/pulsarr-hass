@@ -1,4 +1,7 @@
-ARG BUILD_FROM
+# Default upstream Pulsarr image. CI does not need to override this; bump the
+# version here in lockstep with `pulsarr/build.yaml` and `pulsarr/config.yaml`
+# whenever you pin a new Pulsarr release.
+ARG BUILD_FROM=lakker/pulsarr:0.15.5
 # hadolint ignore=DL3006
 FROM ${BUILD_FROM}
 

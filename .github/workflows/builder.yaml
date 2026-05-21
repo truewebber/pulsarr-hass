@@ -19,7 +19,6 @@ env:
   ARCHITECTURES: '["amd64", "aarch64"]'
   IMAGE_NAME: pulsarr-hass
   ADDON_DIR: pulsarr
-  PULSARR_UPSTREAM: "lakker/pulsarr:0.15.5"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -78,8 +77,6 @@ jobs:
           image-tags: |
             ${{ needs.init.outputs.version }}
             latest
-          build-args: |
-            BUILD_FROM=${{ env.PULSARR_UPSTREAM }}
           version: ${{ needs.init.outputs.version }}
           push: ${{ github.event_name != 'pull_request' }}
           cosign: ${{ github.event_name != 'pull_request' }}
