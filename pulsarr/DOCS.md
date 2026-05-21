@@ -84,6 +84,30 @@ section in the **Configuration** tab and assign a host port to `3003/tcp`.
 When direct port access is enabled, set `auth_method` to `required` or
 `requiredExceptLocal` so that Pulsarr's own login still protects the port.
 
+### Why nginx is in the container
+
+Home Assistant Ingress proxies the add-on under
+`/api/hassio_ingress/<TOKEN>/...` and rotates `<TOKEN>` roughly every 8 hours.
+Pulsarr can serve its UI under a sub-path via the upstream `basePath` env, but
+it reads that variable only at startup, so as soon as Supervisor rotates the
+token Pulsarr's Fastify routes no longer match the prefix browsers send in.
+
+To make the add-on survive token rotation without restarts, this image runs
+a small nginx reverse proxy in front of Pulsarr:
+
+- nginx listens on `:3003` (the add-on's `ingress_port`).
+- Pulsarr listens on `127.0.0.1:8989` (loopback only) with the default
+  `basePath=/`.
+- nginx strips the rotating `/api/hassio_ingress/<TOKEN>` prefix, rewrites
+  `Location:` headers and `Set-Cookie` paths back into Ingress scope, and
+  patches `<base href="/">` in the served HTML on the fly so the SPA's
+  relative asset URLs resolve through Ingress.
+
+This is the same pattern the `alexbelgium` and `hassio-addons` community
+add-ons use when wrapping apps that don't speak Ingress natively. It is also
+the reason a single `<base href>` substitution is what the user actually
+sees in the page source — the upstream HTML still ships `<base href="/">`.
+
 ## Storage layout
 
 | Path inside container | Purpose                                  | Persistent? |
@@ -121,10 +145,11 @@ recommended before any upgrade.
 
 ## Troubleshooting
 
-- **The add-on starts but the Web UI button does nothing.** Check the **Log**
-  tab. Most common cause is `basePath` mismatch; the add-on auto-detects it
-  from `bashio::addon.ingress_entry` so this should never happen — please
-  open an issue with the log if it does.
+- **The add-on starts but the Web UI button shows a JSON 404 / spinner.**
+  Check the **Log** tab and confirm both lines `Starting nginx reverse proxy
+  on :3003 -> 127.0.0.1:8989` and `Server listening at http://127.0.0.1:8989`
+  are present. If only Pulsarr is up but nginx is missing, the in-container
+  proxy failed to start — re-installing the add-on usually fixes it.
 - **Cannot reach Sonarr/Radarr from Pulsarr.** Use the add-on's docker-network
   hostname (e.g. `a0d7b954-sonarr`) rather than `localhost`. Hostnames are
   shown on each add-on's **Info** tab.

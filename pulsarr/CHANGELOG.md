@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.15.5-5
+
+- Fix: serve the UI through an in-container nginx reverse proxy. Home Assistant
+  Ingress prepends `/api/hassio_ingress/<TOKEN>/` to every request and rotates
+  `<TOKEN>` roughly every 8 hours, but Pulsarr reads `basePath` only at startup
+  and cannot follow the rotation, so any request with a fresh token missed
+  every Fastify route and the user saw `{"statusCode":404,"code":"NOT_FOUND"}`
+  instead of the SPA. nginx now strips the rotating prefix before forwarding
+  to Pulsarr (loopback `127.0.0.1:8989`), rewrites upstream `Location` headers
+  back into the Ingress scope, and patches `<base href="/">` in the served HTML
+  on the fly. This is the same pattern the alexbelgium and hassio-addons
+  community add-ons use to wrap apps that don't speak Ingress natively.
+
 ## 0.15.5-4
 
 - Fix: replace `HEALTHCHECK NONE` with a TCP-only probe via bash's built-in

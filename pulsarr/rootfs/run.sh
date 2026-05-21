@@ -71,14 +71,20 @@ fi
 # ------------------------------------------------------------------------------
 # Reverse-proxy / Ingress wiring
 # ------------------------------------------------------------------------------
-# bashio::addon.ingress_entry returns the absolute path that HA reverse-proxies
-# to this add-on, e.g. "/api/hassio_ingress/<token>". Pulsarr serves its UI and
-# REST API under this prefix when `basePath` is set.
-INGRESS_PATH="$(bashio::addon.ingress_entry)"
-export basePath="${INGRESS_PATH}"
-
-# Internal port; the add-on's `ingress_port` in config.yaml must match this.
-export listenPort="3003"
+# Home Assistant Ingress proxies the add-on under
+#   /api/hassio_ingress/<TOKEN>/...
+# and rotates <TOKEN> roughly every 8 hours. Pulsarr reads `basePath` only at
+# startup, so we cannot bake the rotating prefix into the upstream process.
+# Instead we keep Pulsarr on the default basePath ("/") and run nginx as a
+# reverse proxy (see /etc/nginx/nginx.conf) that strips the prefix before
+# forwarding requests to Pulsarr and rewrites Location headers + the SPA's
+# <base href> on the way back out.
+#
+# Pulsarr listens on 127.0.0.1:8989 (loopback only). The container exposes
+# port 3003 (HA's `ingress_port`), but only nginx binds to it.
+unset basePath
+export listenPort="8989"
+export serverHost="127.0.0.1"
 
 # HA Ingress terminates TLS upstream and talks plain HTTP into the add-on.
 # Telling Pulsarr that cookies are not served over HTTPS keeps session cookies
@@ -101,6 +107,20 @@ mkdir -p /data/db /data/logs
 chown -R "${PUID}:${PGID}" /data
 
 # ------------------------------------------------------------------------------
+# Start nginx (reverse proxy) in the background
+# ------------------------------------------------------------------------------
+# nginx must be listening on :3003 before Pulsarr binds to :8989 so that HA's
+# Supervisor sees the ingress port come up. If nginx exits, we tear the whole
+# container down so Supervisor can restart us cleanly.
+bashio::log.info "Starting nginx reverse proxy on :3003 -> 127.0.0.1:8989"
+nginx -t -c /etc/nginx/nginx.conf
+nginx -c /etc/nginx/nginx.conf &
+NGINX_PID=$!
+
+# Propagate SIGTERM/SIGINT to nginx so the container shuts down cleanly.
+trap 'kill -TERM "${NGINX_PID}" 2>/dev/null || true' TERM INT
+
+# ------------------------------------------------------------------------------
 # Hand off to upstream entrypoint
 # ------------------------------------------------------------------------------
 bashio::log.info "Starting Pulsarr"
@@ -108,8 +128,7 @@ bashio::log.info "  TZ=${TZ}"
 bashio::log.info "  logLevel=${logLevel}"
 bashio::log.info "  authenticationMethod=${authenticationMethod}"
 bashio::log.info "  dbType=${DB_TYPE_VALUE}"
-bashio::log.info "  basePath=${basePath}"
-bashio::log.info "  listenPort=${listenPort}"
+bashio::log.info "  listenPort=${listenPort} (loopback only; nginx fronts :3003)"
 
 cd /app
 exec ./docker-entrypoint.sh

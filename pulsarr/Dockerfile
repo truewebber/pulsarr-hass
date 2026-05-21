@@ -9,11 +9,13 @@ FROM ${BUILD_FROM}
 # drop privileges to PUID/PGID via su-exec at runtime.
 USER root
 
-# bashio is a bash-based helper used by Home Assistant add-ons to read
-# /data/options.json. The upstream lakker/pulsarr image is alpine-based
-# and ships only busybox sh, so we install bash + jq + curl here.
+# - bash + jq + curl: needed by bashio (the upstream image is alpine-based and
+#   ships only busybox sh).
+# - nginx: in-container reverse proxy that strips the rotating
+#   `/api/hassio_ingress/<TOKEN>` prefix Home Assistant prepends before each
+#   request. See rootfs/etc/nginx/nginx.conf for the full rationale.
 # hadolint ignore=DL3018
-RUN apk add --no-cache bash jq curl
+RUN apk add --no-cache bash jq curl nginx
 
 # Pull bashio runtime from the canonical HA add-on base image. We do not
 # inherit FROM that image because lakker/pulsarr is our base; we only need
@@ -27,25 +29,24 @@ COPY --from=ghcr.io/hassio-addons/base:20.1.1 /usr/lib/bashio /usr/lib/bashio
 COPY --from=ghcr.io/hassio-addons/base:20.1.1 /usr/bin/tempio /usr/bin/tempio
 RUN ln -sf /usr/lib/bashio/bashio /usr/bin/bashio
 
+# Drop our own nginx.conf in place of the alpine default. /etc/nginx/http.d/*
+# is intentionally not used because we prefer one self-contained file rather
+# than splitting between /etc/nginx/nginx.conf and a separate site config.
+COPY rootfs/etc/nginx/nginx.conf /etc/nginx/nginx.conf
+
+# Make sure nginx's runtime directories are writable by root (we run nginx as
+# root inside the container; Pulsarr itself is dropped to PUID/PGID by the
+# upstream entrypoint).
+RUN mkdir -p /var/log/nginx /var/lib/nginx /run/nginx \
+    && rm -f /etc/nginx/http.d/default.conf
+
 COPY rootfs/run.sh /run.sh
 RUN chmod a+x /run.sh
 
-# Replace the upstream HEALTHCHECK with a TCP-only probe.
-#
-# The upstream check shells out to `${basePath}/health`, but environment
-# variables exported by /run.sh are not visible to Docker's HEALTHCHECK CMD,
-# so the probe hit bare `/health`, which Pulsarr serves only under the
-# Ingress basePath. That generated 404 spam in the add-on log.
-#
-# Disabling HEALTHCHECK entirely (HEALTHCHECK NONE) silenced the spam but
-# made HA Supervisor sit in "starting" forever — without a healthcheck the
-# Supervisor cannot mark the add-on as started, and the HA frontend shows
-# a perpetual loading spinner when opening the Web UI.
-#
-# A TCP-level probe satisfies the Supervisor (the port is open once Pulsarr
-# is listening) without issuing HTTP requests against routes that depend on
-# basePath. bash ships in this image, and /dev/tcp/<host>/<port> is bash's
-# built-in TCP redirector, so no extra dependencies are required.
+# A TCP-level probe satisfies the Supervisor (the port is open once nginx is
+# listening) without issuing HTTP requests against routes that depend on the
+# Ingress prefix. bash ships in this image, and /dev/tcp/<host>/<port> is
+# bash's built-in TCP redirector, so no extra dependencies are required.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --start-interval=10s --retries=3 \
     CMD bash -c '> /dev/tcp/127.0.0.1/3003' || exit 1
 
